@@ -50,8 +50,11 @@
 
         .btn-start { background: var(--accent); color: white; }
         .btn-stop { background: #ff3b30; color: white; display: none; }
-        .btn-export { background: #34c759; color: white; margin-top: 20px; }
+        .btn-export { background: #34c759; color: white; margin-top: 20px; margin-right: 10px; }
+        .btn-clear { background: white; border: 1px solid #ff3b30; color: #ff3b30; margin-top: 20px; }
+        
         button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-clear:hover { background: #ff3b30; color: white; }
 
         .table-container { margin-top: 30px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
@@ -89,6 +92,7 @@
     </div>
 
     <button class="btn-export" onclick="downloadExcel()">DOWNLOAD EXCEL REPORT</button>
+    <button class="btn-clear" onclick="clearLogs()">CLEAR ALL LOGS</button>
 
     <div class="table-container">
         <table>
@@ -125,7 +129,6 @@
             const endTime = new Date();
             const diff = endTime - startTime;
             
-            // Format: YYYY-MM-DD HH:MM:SS
             const formatStamp = (date) => {
                 return date.getFullYear() + "-" + 
                        ("0" + (date.getMonth() + 1)).slice(-2) + "-" + 
@@ -133,7 +136,6 @@
                        date.toTimeString().split(' ')[0];
             };
 
-            // Calculate duration
             const duration = new Date(diff).toISOString().substr(11, 8);
 
             const record = {
@@ -167,6 +169,14 @@
         `).join('');
     }
 
+    function clearLogs() {
+        if (confirm("Are you sure you want to delete all recordings? This cannot be undone.")) {
+            logs = [];
+            localStorage.removeItem('study_logs');
+            refreshDisplay();
+        }
+    }
+
     function downloadExcel() {
         if (logs.length === 0) return alert("No data available to download.");
         
@@ -175,9 +185,7 @@
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Study Data");
             
-            // Generate filename with current date
             const fname = "TimeStudy_" + new Date().toISOString().slice(0,10) + ".xlsx";
-            
             XLSX.writeFile(workbook, fname);
         } catch (e) {
             alert("Download failed. Please check if your browser blocks downloads.");
@@ -188,5 +196,3 @@
 
 </body>
 </html>
-
-
