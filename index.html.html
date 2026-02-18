@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Study Pro - White Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #007AFF; /* Modern Blue */
+            --bg: #ffffff;
+            --border: #e0e0e0;
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-main); 
+            margin: 0; padding: 40px 20px; 
+        }
+
+        .container { max-width: 950px; margin: auto; }
+
+        header { border-bottom: 2px solid #f5f5f7; padding-bottom: 20px; margin-bottom: 30px; }
+        header h1 { font-size: 24px; font-weight: 600; margin: 0; }
+        header p { color: var(--text-sub); margin: 5px 0 0 0; font-size: 14px; }
+
+        .control-panel { 
+            display: flex; gap: 20px; align-items: flex-end; 
+            background: #fbfbfd; padding: 25px; border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .field { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        label { font-size: 12px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; }
+        
+        input, select { 
+            background: white; border: 1px solid var(--border); 
+            padding: 12px; border-radius: 8px; font-size: 14px; outline: none;
+        }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+
+        button { 
+            padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;
+            cursor: pointer; border: none; transition: all 0.2s; 
+        }
+
+        .btn-start { background: var(--accent); color: white; }
+        .btn-stop { background: #ff3b30; color: white; display: none; }
+        .btn-export { background: #34c759; color: white; margin-top: 20px; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .table-container { margin-top: 30px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f5f5f7; padding: 15px; text-align: left; font-size: 13px; color: var(--text-sub); }
+        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        
+        .stamp { font-family: 'Courier New', monospace; font-size: 12px; color: #444; }
+        .duration-cell { font-weight: 600; color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Time & Motion Study</h1>
+        <p>Official Auditor Log Interface</p>
+    </header>
+
+    <div class="control-panel">
+        <div class="field">
+            <label>Auditor Name</label>
+            <input type="text" id="auditor" placeholder="Type name here...">
+        </div>
+        <div class="field">
+            <label>Tracking Type</label>
+            <select id="trackType">
+                <option value="Old Tracking">Old Tracking</option>
+                <option value="New Tracking">New Tracking</option>
+            </select>
+        </div>
+        <div style="flex: 0;">
+            <button id="startBtn" class="btn-start" onclick="manageTimer('start')">START</button>
+            <button id="stopBtn" class="btn-stop" onclick="manageTimer('stop')">FINISH</button>
+        </div>
+    </div>
+
+    <button class="btn-export" onclick="downloadExcel()">DOWNLOAD EXCEL REPORT</button>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Auditor</th>
+                    <th>Type</th>
+                    <th>Start Record Stamp</th>
+                    <th>End Record Stamp</th>
+                    <th>Total Duration</th>
+                </tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let startTime;
+    let logs = JSON.parse(localStorage.getItem('study_logs')) || [];
+
+    window.onload = refreshDisplay;
+
+    function manageTimer(mode) {
+        const auditorInput = document.getElementById('auditor');
+        if (!auditorInput.value) return alert("Please enter the Auditor Name first.");
+
+        if (mode === 'start') {
+            startTime = new Date();
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            auditorInput.disabled = true;
+        } else {
+            const endTime = new Date();
+            const diff = endTime - startTime;
+            
+            // Format: YYYY-MM-DD HH:MM:SS
+            const formatStamp = (date) => {
+                return date.getFullYear() + "-" + 
+                       ("0" + (date.getMonth() + 1)).slice(-2) + "-" + 
+                       ("0" + date.getDate()).slice(-2) + " " + 
+                       date.toTimeString().split(' ')[0];
+            };
+
+            // Calculate duration
+            const duration = new Date(diff).toISOString().substr(11, 8);
+
+            const record = {
+                Auditor: auditorInput.value,
+                Type: document.getElementById('trackType').value,
+                StartStamp: formatStamp(startTime),
+                EndStamp: formatStamp(endTime),
+                Duration: duration
+            };
+
+            logs.unshift(record);
+            localStorage.setItem('study_logs', JSON.stringify(logs));
+            
+            refreshDisplay();
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            auditorInput.disabled = false;
+        }
+    }
+
+    function refreshDisplay() {
+        const body = document.getElementById('logBody');
+        body.innerHTML = logs.map(item => `
+            <tr>
+                <td>${item.Auditor}</td>
+                <td>${item.Type}</td>
+                <td class="stamp">${item.StartStamp}</td>
+                <td class="stamp">${item.EndStamp}</td>
+                <td class="duration-cell">${item.Duration}</td>
+            </tr>
+        `).join('');
+    }
+
+    function downloadExcel() {
+        if (logs.length === 0) return alert("No data available to download.");
+        
+        try {
+            const worksheet = XLSX.utils.json_to_sheet(logs);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Study Data");
+            
+            // Generate filename with current date
+            const fname = "TimeStudy_" + new Date().toISOString().slice(0,10) + ".xlsx";
+            
+            XLSX.writeFile(workbook, fname);
+        } catch (e) {
+            alert("Download failed. Please check if your browser blocks downloads.");
+            console.error(e);
+        }
+    }
+</script>
+
+</body>
+</html>
